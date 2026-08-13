@@ -1,0 +1,70 @@
+@import "tailwindcss";
+
+/*
+ * Class-based dark mode: Tailwind's `dark:` utilities only activate when an
+ * ancestor has the `.dark` class (added/removed on <html> by ThemeProvider),
+ * not based on the OS `prefers-color-scheme`. This keeps the toggle in the
+ * sidebar authoritative and avoids the earlier bug where the OS setting and
+ * this app's (previously light-only) surfaces disagreed.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  /* Tells the browser which native form-control chrome to draw — checkbox
+     ticks, scrollbars, and (the one that actually bit us) the calendar
+     icon + popup on <input type="date">. Without this, the browser always
+     assumes a light UI regardless of our .dark class, so in dark mode it
+     draws a dark-on-dark calendar icon that's effectively invisible: the
+     picker was always there and clickable, it just couldn't be seen or
+     found. This is unrelated to Tailwind's own styling (which only
+     reaches the input's background/text, not OS-native widgets) — it has
+     to be set explicitly via this CSS property. */
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+.dark {
+  --background: #09090b;
+  --foreground: #fafafa;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Belt-and-suspenders: force readable text/placeholder color on all form
+   controls regardless of ancestor color inheritance, in both themes. Every
+   input in the app also sets its own text-color utility class explicitly;
+   this is just a safety net if one is ever missed. */
+input,
+textarea,
+select {
+  color: #18181b; /* zinc-900 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #a1a1aa; /* zinc-400 */
+  opacity: 1;
+}
+
+.dark input,
+.dark textarea,
+.dark select {
+  color: #fafafa; /* zinc-50 */
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #71717a; /* zinc-500 */
+  opacity: 1;
+}

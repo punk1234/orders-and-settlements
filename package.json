@@ -1,0 +1,25 @@
+{
+  "name": "orders-and-settlements",
+  "private": true,
+  "packageManager": "yarn@1.22.22",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "yarn workspace @orders/api start:dev",
+    "dev:web": "yarn workspace @orders/web dev",
+    "build:shared": "yarn workspace @orders/shared build",
+    "build:api": "yarn workspace @orders/api build",
+    "build:web": "yarn workspace @orders/web build",
+    "test:shared": "yarn workspace @orders/shared test",
+    "test:api": "yarn workspace @orders/api test",
+    "postinstall": "node -e \"require('fs').existsSync('packages/shared/src') && require('child_process').execSync('npx tsc -p packages/shared/tsconfig.json', {stdio:'inherit'})\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "resolutions": {
+    "lru-cache": "^10.4.3"
+  }
+}
