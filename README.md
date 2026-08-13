@@ -124,6 +124,8 @@ All three optional stretch goals from the spec are implemented, alongside the LL
 
 Both apps deploy from this monorepo as two separate Vercel projects, backed by a shared MongoDB Atlas cluster.
 
+**Note on `packages/shared`:** each app's own `build` script (`yarn workspace @orders/shared build && nest build` / `... && next build`) explicitly rebuilds the shared package before building itself, rather than relying solely on the root `postinstall` hook. Reason: when a Vercel project's Root Directory is set to `apps/api` or `apps/web`, its install/build step isn't guaranteed to run from — or trigger a hook defined in — the monorepo root, so a stale or missing `packages/shared/dist` (gitignored, since it's build output) would otherwise surface as confusing "module has no exported member" TypeScript errors that don't reproduce locally once `yarn install` has run once at the root.
+
 ### 1. MongoDB Atlas
 
 1. Create a free M0 cluster at [mongodb.com/atlas](https://www.mongodb.com/atlas) (permanently free, real replica set — required for the payment transaction).
