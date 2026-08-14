@@ -2,7 +2,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
   return (
     <span
       role="presentation"
-      className={`block animate-pulse rounded bg-zinc-200 dark:bg-zinc-800 ${className}`}
+      className={`block animate-pulse rounded bg-zinc-200 dark:bg-zinc-700 ${className}`}
     />
   );
 }

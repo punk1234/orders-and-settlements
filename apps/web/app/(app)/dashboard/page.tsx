@@ -53,11 +53,11 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Dashboard</h1>
         <Link
           href="/orders/new"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="w-full rounded-md bg-zinc-900 px-4 py-2 text-center text-sm font-medium text-white hover:bg-zinc-800 sm:w-auto dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           New order
         </Link>
@@ -99,7 +99,7 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <div className="mt-2 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mt-2 overflow-x-auto rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-800">
           {!loading && recentOrders.length === 0 ? (
             <p className="p-6 text-sm text-zinc-500 dark:text-zinc-400">
               No orders yet.{' '}
@@ -110,7 +110,7 @@ export default function DashboardPage() {
             </p>
           ) : (
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/60 dark:text-zinc-400">
+              <thead className="border-b border-zinc-200 bg-zinc-50 text-xs uppercase text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400">
                 <tr>
                   <th className="px-4 py-3">Customer</th>
                   <th className="px-4 py-3">Status</th>
@@ -118,7 +118,7 @@ export default function DashboardPage() {
                   <th className="px-4 py-3">Due date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700">
                 {loading
                   ? Array.from({ length: 5 }).map((_, i) => (
                       <SkeletonTableRow key={i} widths={RECENT_TABLE_SKELETON_WIDTHS} />
@@ -126,7 +126,7 @@ export default function DashboardPage() {
                   : recentOrders.map((order) => (
                   <tr
                     key={order.id}
-                    className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
+                    className="cursor-pointer hover:bg-zinc-50 dark:hover:bg-zinc-700/50"
                     onClick={() => router.push(`/orders/${order.id}`)}
                   >
                     <td className="px-4 py-3">
@@ -164,7 +164,7 @@ function StatCard({
   tone?: 'default' | 'warning';
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800">
       <p className="text-xs tracking-wide text-zinc-500 uppercase dark:text-zinc-400">{label}</p>
       <p
         className={`mt-1 text-lg font-semibold ${
@@ -181,7 +181,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800">
       <Skeleton className="h-3 w-20" />
       <Skeleton className="mt-2 h-6 w-14" />
     </div>

@@ -171,7 +171,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: Sid
               } ${
                 active
                   ? 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
-                  : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800'
+                  : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-700'
               }`}
             >
               <Icon />
@@ -181,13 +181,13 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: Sid
         })}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-800">
+      <div className="mt-auto flex flex-col gap-3 border-t border-zinc-200 pt-4 dark:border-zinc-700">
         {onToggleCollapse && (
           <button
             type="button"
             onClick={onToggleCollapse}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={`hidden items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 md:flex dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 ${
+            className={`hidden items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 md:flex dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-700 ${
               collapsed ? 'justify-center' : ''
             }`}
           >
@@ -200,7 +200,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: Sid
           type="button"
           onClick={toggleTheme}
           title={collapsed ? (theme === 'dark' ? 'Light mode' : 'Dark mode') : undefined}
-          className={`flex items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 ${
+          className={`flex items-center gap-2 rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-700 ${
             collapsed ? 'justify-center' : ''
           }`}
         >
@@ -212,7 +212,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: Sid
           <button
             onClick={handleLogout}
             title={`Log out (${user.email})`}
-            className="flex items-center justify-center rounded-md border border-zinc-300 px-3 py-2 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="flex items-center justify-center rounded-md border border-zinc-300 px-3 py-2 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-700"
           >
             <LogoutIcon />
           </button>
@@ -225,7 +225,7 @@ function SidebarContent({ onNavigate, collapsed = false, onToggleCollapse }: Sid
             </span>
             <button
               onClick={handleLogout}
-              className="shrink-0 rounded-md border border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              className="shrink-0 rounded-md border border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-700"
             >
               Log out
             </button>
@@ -256,7 +256,7 @@ export function Sidebar() {
   return (
     <>
       {/* Mobile top bar */}
-      <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 md:hidden dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-4 py-3 md:hidden dark:border-zinc-700 dark:bg-zinc-800">
         <Link href="/dashboard">
           <Logo />
         </Link>
@@ -264,7 +264,7 @@ export function Sidebar() {
           type="button"
           onClick={() => setMobileOpen(true)}
           aria-label="Open navigation"
-          className="rounded-md border border-zinc-300 p-2 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
+          className="rounded-md border border-zinc-300 p-2 text-zinc-700 dark:border-zinc-600 dark:text-zinc-300"
         >
           <MenuIcon />
         </button>
@@ -273,13 +273,13 @@ export function Sidebar() {
       {/* Mobile drawer (never collapsed — it's an overlay you just close) */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <div className="relative z-10 flex h-full w-72 max-w-[80vw] flex-col border-r border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+          <div className="animate-fade-in absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
+          <div className="animate-slide-in-left relative z-10 flex h-full w-72 max-w-[80vw] flex-col border-r border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800">
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
               aria-label="Close navigation"
-              className="absolute top-4 right-4 rounded-md p-1 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+              className="absolute top-4 right-4 rounded-md p-1 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-700"
             >
               <CloseIcon />
             </button>
@@ -290,7 +290,7 @@ export function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside
-        className={`hidden shrink-0 border-r border-zinc-200 bg-white p-4 transition-[width] duration-150 md:flex dark:border-zinc-800 dark:bg-zinc-900 ${
+        className={`hidden shrink-0 border-r border-zinc-200 bg-white p-4 transition-[width] duration-150 md:flex dark:border-zinc-700 dark:bg-zinc-800 ${
           collapsed ? 'md:w-16' : 'md:w-60'
         }`}
       >

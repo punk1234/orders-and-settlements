@@ -54,9 +54,9 @@ interface OrderFormProps {
 }
 
 const INPUT_CLASS =
-  'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-400';
+  'mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-400';
 const CELL_INPUT_CLASS =
-  'w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-400';
+  'w-full rounded-md border border-zinc-300 px-2 py-1.5 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:text-zinc-50 dark:placeholder:text-zinc-500 dark:focus:border-zinc-400';
 
 export function OrderForm({ initial, onSubmit, submitLabel }: OrderFormProps) {
   const [customer, setCustomer] = useState(initial?.customer ?? '');
@@ -158,9 +158,101 @@ export function OrderForm({ initial, onSubmit, submitLabel }: OrderFormProps) {
           </button>
         </div>
 
-        <div className="mt-2 overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-800">
+        {/* Below sm: a table forces every field onto one cramped row, so
+            entering a quantity or unit price means horizontally scrolling
+            while typing — awkward on a phone. Below sm, each line item is
+            instead its own 2-row card (description on its own line, qty +
+            unit price side by side underneath). At sm and up there's room
+            for the compact single-row table, which stays the better layout
+            once there are several line items to scan. */}
+        <div className="mt-2 space-y-3 sm:hidden">
+          {lineItems.map((item, index) => (
+            <div
+              key={index}
+              className="rounded-md border border-zinc-200 p-3 dark:border-zinc-700"
+            >
+              <div className="flex items-start gap-2">
+                <div className="flex-1">
+                  <label
+                    htmlFor={`line-item-${index}-description`}
+                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                  >
+                    Description
+                  </label>
+                  <input
+                    id={`line-item-${index}-description`}
+                    type="text"
+                    required
+                    value={item.description}
+                    onChange={(e) => updateLineItem(index, { description: e.target.value })}
+                    className={`${CELL_INPUT_CLASS} mt-1`}
+                  />
+                </div>
+                {lineItems.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => removeLineItem(index)}
+                    className="mt-5 text-zinc-400 hover:text-red-600 dark:text-zinc-500 dark:hover:text-red-400"
+                    aria-label={`Remove line item ${index + 1}`}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <label
+                    htmlFor={`line-item-${index}-quantity`}
+                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                  >
+                    Qty
+                  </label>
+                  <input
+                    id={`line-item-${index}-quantity`}
+                    type="number"
+                    min={1}
+                    step={1}
+                    required
+                    value={item.quantity}
+                    onChange={(e) =>
+                      updateLineItem(index, { quantity: stripLeadingZero(e.target.value) })
+                    }
+                    className={`${CELL_INPUT_CLASS} mt-1`}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor={`line-item-${index}-unit-price`}
+                    className="block text-xs font-medium text-zinc-500 dark:text-zinc-400"
+                  >
+                    Unit price
+                  </label>
+                  <input
+                    id={`line-item-${index}-unit-price`}
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    required
+                    value={item.unitPrice}
+                    onChange={(e) =>
+                      updateLineItem(index, { unitPrice: stripLeadingZero(e.target.value) })
+                    }
+                    className={`${CELL_INPUT_CLASS} mt-1`}
+                  />
+                </div>
+              </div>
+
+              <p className="mt-2 text-right text-xs text-zinc-500 dark:text-zinc-400">
+                Line total: {formatCurrency(toNumber(item.quantity) * toNumber(item.unitPrice))}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-2 hidden overflow-x-auto rounded-md border border-zinc-200 sm:block dark:border-zinc-700">
           <table className="w-full text-left text-sm">
-            <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-900/60 dark:text-zinc-400">
+            <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-800/60 dark:text-zinc-400">
               <tr>
                 <th className="px-3 py-2">Description</th>
                 <th className="w-24 px-3 py-2">Qty</th>
@@ -169,7 +261,7 @@ export function OrderForm({ initial, onSubmit, submitLabel }: OrderFormProps) {
                 <th className="w-10 px-3 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-700">
               {lineItems.map((item, index) => (
                 <tr key={index}>
                   <td className="px-3 py-2">

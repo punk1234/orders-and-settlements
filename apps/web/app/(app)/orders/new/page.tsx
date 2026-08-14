@@ -19,7 +19,7 @@ export default function NewOrderPage() {
   return (
     <div>
       <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">New order</h1>
-      <div className="mt-6 max-w-2xl rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+      <div className="mt-6 max-w-2xl rounded-lg border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-800">
         <OrderForm onSubmit={handleSubmit} submitLabel="Create order" />
       </div>
     </div>
