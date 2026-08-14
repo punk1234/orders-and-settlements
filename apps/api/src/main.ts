@@ -39,7 +39,21 @@ async function bootstrap(): Promise<void> {
     .addCookieAuth('token')
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, swaggerDocument);
+  SwaggerModule.setup('docs', app, swaggerDocument, {
+    // On Vercel, @nestjs/swagger's default setup serves its UI (JS/CSS)
+    // from local files in the swagger-ui-dist package. Vercel's serverless
+    // bundler only includes files it can trace as actually required by the
+    // code — these are static assets read from disk at request time, not
+    // imported, so it never bundles them. The result: /docs loads its HTML
+    // shell fine, but the JS/CSS 404, rendering a blank white page. Pointing
+    // at the CDN build of the exact same swagger-ui-dist version sidesteps
+    // this — it's the standard fix for Swagger UI on serverless platforms.
+    customCssUrl: 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui.min.css',
+    customJs: [
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui-bundle.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.17.14/swagger-ui-standalone-preset.min.js',
+    ],
+  });
 
   const frontendOrigin = process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000';
   app.enableCors({
