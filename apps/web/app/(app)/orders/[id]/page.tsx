@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { PaymentForm } from '@/components/PaymentForm';
 import { RefundForm } from '@/components/RefundForm';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { Skeleton, SkeletonTableRow } from '@/components/Skeleton';
 
 type Transaction =
   | ({ kind: 'payment' } & Payment)
@@ -23,28 +24,56 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Split from `refreshing` so recording a payment/refund doesn't unmount
+  // the whole page back to a bare loading state — only the very first
+  // fetch blocks rendering; later refetches (after a payment/refund is
+  // recorded) update in place while a small "Refreshing…" hint shows.
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    Promise.all([
-      api.get<OrderDetail>(`/orders/${id}`),
-      api.get<AuditLogEntry[]>(`/orders/${id}/audit-log`),
-    ])
-      .then(([orderRes, auditRes]) => {
-        setOrder(orderRes);
-        setAuditLog(auditRes);
-      })
-      .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load order.'))
-      .finally(() => setLoading(false));
-  }, [id]);
+  const load = useCallback(
+    (opts: { silent?: boolean } = {}) => {
+      if (opts.silent) {
+        setRefreshing(true);
+      } else {
+        setInitialLoading(true);
+        setError(null);
+      }
+      Promise.all([
+        api.get<OrderDetail>(`/orders/${id}`),
+        api.get<AuditLogEntry[]>(`/orders/${id}/audit-log`),
+      ])
+        .then(([orderRes, auditRes]) => {
+          setOrder(orderRes);
+          setAuditLog(auditRes);
+        })
+        .catch((err) => {
+          const message = err instanceof ApiError ? err.message : 'Failed to load order.';
+          if (opts.silent) {
+            toast.error(message);
+          } else {
+            setError(message);
+          }
+        })
+        .finally(() => {
+          if (opts.silent) setRefreshing(false);
+          else setInitialLoading(false);
+        });
+    },
+    [id, toast],
+  );
 
   useEffect(() => {
     load();
-  }, [load]);
+    // Only re-run for a genuinely new order id — `load` is intentionally
+    // excluded here even though it's in scope, since re-running on every
+    // toast-identity change would refetch on unrelated toast activity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const refetchSilently = useCallback(() => load({ silent: true }), [load]);
 
   async function handleDelete() {
     if (!order) return;
@@ -65,12 +94,22 @@ export default function OrderDetailPage() {
     if (!order) return [];
     const payments: Transaction[] = order.payments.map((p) => ({ kind: 'payment', ...p }));
     const refunds: Transaction[] = order.refunds.map((r) => ({ kind: 'refund', ...r }));
-    return [...payments, ...refunds].sort((a, b) => a.date.localeCompare(b.date));
+    // Newest first — a transaction ledger reads better with the most recent
+    // activity at the top (bank/Stripe convention), unlike the status-history
+    // timeline below, which reads as a story and stays oldest-first.
+    return [...payments, ...refunds].sort((a, b) => {
+      const byDate = b.date.localeCompare(a.date);
+      if (byDate !== 0) return byDate;
+      return (b.createdAt ?? '').localeCompare(a.createdAt ?? '');
+    });
   }, [order]);
 
-  if (loading) return <p className="text-sm text-zinc-500 dark:text-zinc-400">Loading…</p>;
+  if (initialLoading) return <OrderDetailSkeleton />;
   if (error) return <p className="text-sm text-red-600 dark:text-red-400">{error}</p>;
   if (!order) return null;
+
+  const showPaymentForm = order.amountDue > 0;
+  const showRefundForm = order.amountPaid > 0;
 
   return (
     <div className="space-y-8">
@@ -78,12 +117,19 @@ export default function OrderDetailPage() {
         <Link href="/orders" className="text-sm text-zinc-500 underline dark:text-zinc-400">
           ← Back to orders
         </Link>
-        <div className="mt-2 flex items-center justify-between">
+        <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{order.customer}</h1>
-            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Due {formatDate(order.dueDate)}</p>
+            <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+              Due {formatDate(order.dueDate)}
+              {refreshing && (
+                <span className="ml-2 text-zinc-400 dark:text-zinc-500" aria-live="polite">
+                  Refreshing…
+                </span>
+              )}
+            </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <StatusBadge status={order.status} />
             {order.editable && (
               <Link
@@ -132,10 +178,10 @@ export default function OrderDetailPage() {
           <table className="w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-900/60 dark:text-zinc-400">
               <tr>
-                <th className="px-4 py-2">Description</th>
-                <th className="px-4 py-2 text-right">Qty</th>
-                <th className="px-4 py-2 text-right">Unit price</th>
-                <th className="px-4 py-2 text-right">Line total</th>
+                <th scope="col" className="px-4 py-2">Description</th>
+                <th scope="col" className="px-4 py-2 text-right">Qty</th>
+                <th scope="col" className="px-4 py-2 text-right">Unit price</th>
+                <th scope="col" className="px-4 py-2 text-right">Line total</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -167,10 +213,10 @@ export default function OrderDetailPage() {
             <table className="w-full text-left text-sm">
               <thead className="bg-zinc-50 text-xs uppercase text-zinc-500 dark:bg-zinc-900/60 dark:text-zinc-400">
                 <tr>
-                  <th className="px-4 py-2">Date</th>
-                  <th className="px-4 py-2">Type</th>
-                  <th className="px-4 py-2 text-right">Amount</th>
-                  <th className="px-4 py-2">Note</th>
+                  <th scope="col" className="px-4 py-2">Date</th>
+                  <th scope="col" className="px-4 py-2">Type</th>
+                  <th scope="col" className="px-4 py-2 text-right">Amount</th>
+                  <th scope="col" className="px-4 py-2">Note</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -196,7 +242,12 @@ export default function OrderDetailPage() {
                       {t.kind === 'refund' ? '−' : ''}
                       {formatCurrency(t.amount)}
                     </td>
-                    <td className="px-4 py-2 text-zinc-600 dark:text-zinc-400">{t.note ?? '—'}</td>
+                    <td
+                      className="max-w-[16rem] truncate px-4 py-2 text-zinc-600 dark:text-zinc-400"
+                      title={t.note ?? undefined}
+                    >
+                      {t.note ?? '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -205,29 +256,33 @@ export default function OrderDetailPage() {
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-        {order.amountDue > 0 && (
-          <section>
-            <h2 className="text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-              Record a payment
-            </h2>
-            <div className="mt-2 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <PaymentForm orderId={order.id} amountDue={order.amountDue} onRecorded={load} />
-            </div>
-          </section>
-        )}
+      {(showPaymentForm || showRefundForm) && (
+        <div
+          className={`grid grid-cols-1 gap-8 ${showPaymentForm && showRefundForm ? 'sm:grid-cols-2' : ''}`}
+        >
+          {showPaymentForm && (
+            <section>
+              <h2 className="text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                Record a payment
+              </h2>
+              <div className="mt-2 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <PaymentForm orderId={order.id} amountDue={order.amountDue} onRecorded={refetchSilently} />
+              </div>
+            </section>
+          )}
 
-        {order.amountPaid > 0 && (
-          <section>
-            <h2 className="text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
-              Record a refund
-            </h2>
-            <div className="mt-2 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <RefundForm orderId={order.id} amountPaid={order.amountPaid} onRecorded={load} />
-            </div>
-          </section>
-        )}
-      </div>
+          {showRefundForm && (
+            <section>
+              <h2 className="text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
+                Record a refund
+              </h2>
+              <div className="mt-2 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+                <RefundForm orderId={order.id} amountPaid={order.amountPaid} onRecorded={refetchSilently} />
+              </div>
+            </section>
+          )}
+        </div>
+      )}
 
       <section>
         <h2 className="text-sm font-semibold tracking-wide text-zinc-500 uppercase dark:text-zinc-400">
@@ -264,6 +319,48 @@ function SummaryStat({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
       <p className="text-xs tracking-wide text-zinc-500 uppercase dark:text-zinc-400">{label}</p>
       <p className="mt-1 text-lg font-semibold text-zinc-900 dark:text-zinc-50">{value}</p>
+    </div>
+  );
+}
+
+// Mirrors the loaded page's structure (header, stat cards, line-item table)
+// so nothing visually jumps once real content arrives — same skeleton
+// pattern already used on the orders list page.
+function OrderDetailSkeleton() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <Skeleton className="h-4 w-28" />
+        <div className="mt-3 flex items-start justify-between gap-3">
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <Skeleton className="h-7 w-20 rounded-full" />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="mt-2 h-5 w-16" />
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <Skeleton className="h-4 w-24" />
+        <div className="mt-2 overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+          <table className="w-full text-left text-sm">
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <SkeletonTableRow key={i} widths={['w-40', 'w-10 ml-auto', 'w-16 ml-auto', 'w-16 ml-auto']} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   );
 }

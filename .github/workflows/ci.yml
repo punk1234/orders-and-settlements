@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same branch/PR instead of letting an old
+# push's CI keep running after a newer push has already been made.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  # Matches the packageManager field in the root package.json and the
+  # version Vercel/Docker both install via corepack, so CI exercises the
+  # exact same yarn as every other environment in this repo.
+  YARN_VERSION: '1.22.22'
+
+jobs:
+  shared:
+    name: shared package (build + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@${{ env.YARN_VERSION }} --activate
+
+      # Installing from the repo root (not apps/api or apps/web) is
+      # required for yarn classic workspaces to resolve @orders/shared and
+      # matches how this project installs everywhere else (local dev,
+      # Docker, Vercel with "include files outside root directory").
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn workspace @orders/shared build
+
+      - name: Test
+        run: yarn workspace @orders/shared test
+
+  api:
+    name: apps/api (build + test)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@${{ env.YARN_VERSION }} --activate
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # apps/api's own build script rebuilds @orders/shared first — see the
+      # "Note on packages/shared" section in the README for why that's
+      # necessary rather than relying solely on the root postinstall hook.
+      - name: Build
+        run: yarn workspace @orders/api build
+
+      # These are unit tests against mocked services/models (no real Mongo
+      # connection), so no MONGO_URI/JWT_SECRET secrets are needed here.
+      - name: Test
+        run: yarn workspace @orders/api test
+
+  web:
+    name: apps/web (lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: yarn
+
+      - name: Enable Corepack
+        run: |
+          corepack enable
+          corepack prepare yarn@${{ env.YARN_VERSION }} --activate
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn workspace @orders/web lint
+
+      # next build type-checks the whole app (no ignoreBuildErrors set),
+      # so this also acts as the frontend's type-check step. There's no
+      # frontend unit test suite in this repo yet — see "What I'd improve
+      # before production" in the README.
+      - name: Build
+        run: yarn workspace @orders/web build

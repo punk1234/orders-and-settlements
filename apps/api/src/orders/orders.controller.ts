@@ -36,45 +36,8 @@ import { RefundsService } from '../refunds/refunds.service';
 import { toRefundResponse } from '../refunds/refund.mapper';
 import { AuditService } from '../audit/audit.service';
 import { toAuditLogEntryResponse } from '../audit/audit.mapper';
-
-const ORDER_EXAMPLE = {
-  id: '66c1f2a1e2b4a7f1d8c9a001',
-  customer: 'Acme Inc',
-  dueDate: '2026-08-19T00:00:00.000Z',
-  lineItems: [{ description: 'Widget', quantity: 2, unitPrice: 500 }],
-  subtotal: 1000,
-  total: 1000,
-  amountPaid: 400,
-  amountDue: 600,
-  status: 'partially_paid',
-  editable: false,
-  createdAt: '2026-08-01T10:00:00.000Z',
-  updatedAt: '2026-08-05T10:00:00.000Z',
-};
-
-const PAYMENT_EXAMPLE = {
-  id: '66c1f2a1e2b4a7f1d8c9a010',
-  amount: 400,
-  date: '2026-08-05T00:00:00.000Z',
-  note: 'First installment',
-  createdAt: '2026-08-05T10:00:00.000Z',
-};
-
-const REFUND_EXAMPLE = {
-  id: '66c1f2a1e2b4a7f1d8c9a020',
-  amount: 100,
-  date: '2026-08-06T00:00:00.000Z',
-  note: 'Damaged item',
-  createdAt: '2026-08-06T10:00:00.000Z',
-};
-
-const AUDIT_LOG_EXAMPLE = {
-  id: '66c1f2a1e2b4a7f1d8c9a030',
-  fromStatus: 'pending',
-  toStatus: 'partially_paid',
-  trigger: 'payment',
-  occurredAt: '2026-08-05T10:00:00.000Z',
-};
+import { OrderDetailResponseDto, OrderResponseDto } from './dto/order-response.dto';
+import { AuditLogEntryResponseDto } from '../audit/dto/audit-log-entry-response.dto';
 
 function parseStatusFilter(status: unknown): OrderStatus | undefined {
   if (status === undefined) return undefined;
@@ -112,7 +75,7 @@ export class OrdersController {
       },
     },
   })
-  @ApiResponse({ status: 201, schema: { example: { ...ORDER_EXAMPLE, amountPaid: 0, amountDue: 1000, status: 'pending', editable: true } } })
+  @ApiResponse({ status: 201, type: OrderResponseDto })
   async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(createOrderSchema)) body: CreateOrderInput,
@@ -124,7 +87,7 @@ export class OrdersController {
   @Get()
   @ApiOperation({ summary: "List the current user's orders, optionally filtered by status." })
   @ApiQuery({ name: 'status', required: false, enum: ORDER_STATUSES })
-  @ApiResponse({ status: 200, schema: { example: [ORDER_EXAMPLE] } })
+  @ApiResponse({ status: 200, type: [OrderResponseDto] })
   async findAll(@CurrentUser() user: AuthenticatedUser, @Query('status') status?: string) {
     const statusFilter = parseStatusFilter(status);
     const orders = await this.ordersService.findAllForUser(user.userId, statusFilter);
@@ -178,10 +141,7 @@ export class OrdersController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get one order, including its line items, payment/refund history.' })
-  @ApiResponse({
-    status: 200,
-    schema: { example: { ...ORDER_EXAMPLE, payments: [PAYMENT_EXAMPLE], refunds: [REFUND_EXAMPLE] } },
-  })
+  @ApiResponse({ status: 200, type: OrderDetailResponseDto })
   @ApiResponse({
     status: 404,
     schema: { example: { error: { code: 'NOT_FOUND', message: 'Order not found.' } } },
@@ -203,7 +163,7 @@ export class OrdersController {
 
   @Get(':id/audit-log')
   @ApiOperation({ summary: 'Status-change history for one order, with timestamps.' })
-  @ApiResponse({ status: 200, schema: { example: [{ ...AUDIT_LOG_EXAMPLE, fromStatus: null, trigger: 'created' }, AUDIT_LOG_EXAMPLE] } })
+  @ApiResponse({ status: 200, type: [AuditLogEntryResponseDto] })
   async auditLog(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
     const order = await this.ordersService.findOneForUserWithStatusSync(user.userId, id);
     const entries = await this.auditService.listForOrder(order._id);
@@ -212,7 +172,7 @@ export class OrdersController {
 
   @Patch(':id')
   @ApiOperation({ summary: 'Edit an order. Rejected (409 ORDER_LOCKED) once any payment has been recorded.' })
-  @ApiResponse({ status: 200, schema: { example: { ...ORDER_EXAMPLE, amountPaid: 0, amountDue: 1000, status: 'pending', editable: true } } })
+  @ApiResponse({ status: 200, type: OrderResponseDto })
   @ApiResponse({
     status: 409,
     schema: { example: { error: { code: 'ORDER_LOCKED', message: 'This order has payments recorded and can no longer be edited.' } } },

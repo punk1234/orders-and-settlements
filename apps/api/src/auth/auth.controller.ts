@@ -8,6 +8,7 @@ import { CurrentUser, AuthenticatedUser } from '../common/decorators/current-use
 import { AuthService } from './auth.service';
 import { AUTH_COOKIE_NAME, authCookieOptions } from './cookie.util';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { AuthResponseDto, LogoutResponseDto } from './dto/auth-response.dto';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -25,7 +26,7 @@ export class AuthController {
   @ApiResponse({
     status: 201,
     description: 'Account created. The auth cookie is set on the response.',
-    schema: { example: { user: { id: '66c1f2a1e2b4a7f1d8c9a001', email: 'jane@acme.com' } } },
+    type: AuthResponseDto,
   })
   @ApiResponse({
     status: 409,
@@ -51,7 +52,7 @@ export class AuthController {
   @ApiResponse({
     status: 200,
     description: 'Logged in. The auth cookie is set on the response.',
-    schema: { example: { user: { id: '66c1f2a1e2b4a7f1d8c9a001', email: 'jane@acme.com' } } },
+    type: AuthResponseDto,
   })
   @ApiResponse({
     status: 401,
@@ -70,7 +71,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Clear the auth cookie.' })
-  @ApiResponse({ status: 200, schema: { example: { ok: true } } })
+  @ApiResponse({ status: 200, type: LogoutResponseDto })
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie(AUTH_COOKIE_NAME, { path: '/' });
     return { ok: true };
@@ -80,10 +81,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiCookieAuth('token')
   @ApiOperation({ summary: 'Get the currently authenticated user (used by the frontend to check session state).' })
-  @ApiResponse({
-    status: 200,
-    schema: { example: { user: { id: '66c1f2a1e2b4a7f1d8c9a001', email: 'jane@acme.com' } } },
-  })
+  @ApiResponse({ status: 200, type: AuthResponseDto })
   @ApiResponse({
     status: 401,
     schema: { example: { error: { code: 'UNAUTHORIZED', message: 'Authentication required.' } } },

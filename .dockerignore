@@ -1,0 +1,37 @@
+# apps/api/Dockerfile builds from the monorepo root (so yarn workspaces can
+# resolve @orders/shared), but only ever COPYs package.json/yarn.lock,
+# packages/shared, and apps/api explicitly — nothing here is ever used by
+# the image. Without this file, `docker build` still sends the entire
+# directory (node_modules, .git, apps/web, coverage, etc.) to the Docker
+# daemon as build context before any COPY filtering happens, which is slow
+# and, for node_modules/.git, can be gigabytes for no benefit.
+
+node_modules/
+**/node_modules/
+
+.git/
+.gitignore
+
+# Compiled output — the Dockerfile builds these fresh inside the image.
+dist/
+**/dist/
+build/
+**/build/
+.next/
+**/.next/
+coverage/
+**/coverage/
+
+# apps/web is a separate Vercel deployment; the API image never needs it.
+apps/web/
+
+# Env files and secrets should never end up inside an image layer.
+.env
+.env.*
+!.env.example
+
+*.log
+.DS_Store
+
+README.md
+PLAN.md

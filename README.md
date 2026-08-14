@@ -111,20 +111,35 @@ All three optional stretch goals from the spec are implemented, alongside the LL
 
 - Integer cents instead of floating-point currency amounts.
 - **Idempotency keys on `POST /orders/:id/payments`.** A client-side retry after a timed-out request (flaky network, not a double-click — the frontend already disables the submit button while in flight) could currently create a duplicate payment if the retry lands before the first request's response. The standard fix is an `Idempotency-Key` header the client generates once per submission, stored against the resulting payment so a repeat with the same key returns the original result instead of creating a second one.
-- Rate limiting on `/auth/login` (a natural fit for Redis, which isn't used anywhere currently — there was no caching or session-store need to justify adding it).
 - JWT revocation on logout — right now `/auth/logout` only clears the client's cookie; a stolen token would stay valid until it naturally expires (7 days). A Redis-backed denylist of logged-out token ids would close this.
 - A scheduled job (e.g. Vercel Cron) that proactively sweeps all orders for due-date-driven overdue transitions, instead of the audit log's current read-triggered backfill — would make "observed" entries' timestamps exact instead of "first noticed," at the cost of real infra to stand up. Documented as a deliberate tradeoff in the stretch-goals section above, not an oversight.
 - Idempotency keys on `POST /orders/:id/refunds` too, for the same reason as payments below.
 - Pagination on `GET /orders` — fine at take-home scale, would need it for a real customer with thousands of orders.
-- A CI pipeline running `yarn test:shared` + `yarn test:api` on every PR (not set up here, but the test suite is already there for it to run).
+- Frontend unit/component tests (Vitest + React Testing Library) — CI (see below) covers `apps/api`'s Jest suite and `apps/web`'s lint/type-check/build, but there's no frontend test runner set up yet to exercise things like the order detail page's payment/refund refetch behavior or the orders list's client-side filtering.
 - Structured request logging and error monitoring (e.g. Sentry) in production — currently just Nest's default logger.
 - A real integration test (`mongodb-memory-server` or similar) proving the overpayment guard's atomicity against an actual MongoDB replica set, not just a mock built to mirror its semantics — see the concurrency note above.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push to `main` and every pull request, as three parallel jobs (each does its own `yarn install --frozen-lockfile` from the repo root, same as local/Docker/Vercel):
+
+- **shared** — builds `packages/shared` and runs its Jest suite.
+- **api** — builds `apps/api` (which rebuilds `packages/shared` first, same as production) and runs its Jest suite (mocked services, no real MongoDB connection needed).
+- **web** — lints `apps/web` and runs `next build`, which also type-checks the whole app.
 
 ## Deployment
 
 Both apps deploy from this monorepo as two separate Vercel projects, backed by a shared MongoDB Atlas cluster.
 
 **Note on `packages/shared`:** each app's own `build` script (`yarn workspace @orders/shared build && nest build` / `... && next build`) explicitly rebuilds the shared package before building itself, rather than relying solely on the root `postinstall` hook. Reason: when a Vercel project's Root Directory is set to `apps/api` or `apps/web`, its install/build step isn't guaranteed to run from — or trigger a hook defined in — the monorepo root, so a stale or missing `packages/shared/dist` (gitignored, since it's build output) would otherwise surface as confusing "module has no exported member" TypeScript errors that don't reproduce locally once `yarn install` has run once at the root.
+
+**Docker (optional, AWS App Runner path):** `apps/api/Dockerfile` needs the monorepo root as its build context — not `apps/api` — because it `COPY`s `packages/shared` into the image so yarn workspaces can resolve `@orders/shared`. That's also why `.dockerignore` lives at the repo root rather than inside `apps/api`: Docker only reads a `.dockerignore` from the build context root, and here the context root is the repo root. Build it with:
+
+```bash
+docker build -f apps/api/Dockerfile -t orders-api .
+```
+
+run from the repo root (the trailing `.` is the context).
 
 ### 1. MongoDB Atlas
 

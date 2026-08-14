@@ -2,6 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { HealthResponseDto } from './dto/health-response.dto';
 
 @ApiTags('health')
 @Controller('health')
@@ -10,10 +11,7 @@ export class HealthController {
 
   @Get()
   @ApiOperation({ summary: 'Liveness/readiness check, including DB connectivity.' })
-  @ApiResponse({
-    status: 200,
-    schema: { example: { status: 'ok', db: 'connected', timestamp: '2026-08-13T12:00:00.000Z' } },
-  })
+  @ApiResponse({ status: 200, type: HealthResponseDto })
   check() {
     // readyState: 0 = disconnected, 1 = connected, 2 = connecting, 3 = disconnecting
     const dbState = this.connection.readyState;

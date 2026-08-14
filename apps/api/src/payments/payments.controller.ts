@@ -6,14 +6,7 @@ import { CurrentUser, AuthenticatedUser } from '../common/decorators/current-use
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { PaymentsService } from './payments.service';
 import { toPaymentResponse } from './payment.mapper';
-
-const PAYMENT_EXAMPLE = {
-  id: '66c1f2a1e2b4a7f1d8c9a010',
-  amount: 400,
-  date: '2026-08-05T00:00:00.000Z',
-  note: 'First installment',
-  createdAt: '2026-08-05T10:00:00.000Z',
-};
+import { PaymentResponseDto } from './dto/payment-response.dto';
 
 @ApiTags('payments')
 @ApiCookieAuth('token')
@@ -32,7 +25,7 @@ export class PaymentsController {
   @ApiBody({
     schema: { example: { amount: 400, date: '2026-08-12', note: 'First installment' } },
   })
-  @ApiResponse({ status: 201, schema: { example: PAYMENT_EXAMPLE } })
+  @ApiResponse({ status: 201, type: PaymentResponseDto })
   @ApiResponse({
     status: 409,
     schema: {
@@ -52,7 +45,7 @@ export class PaymentsController {
 
   @Get()
   @ApiOperation({ summary: 'Full payment history for one order (also embedded in GET /orders/:id).' })
-  @ApiResponse({ status: 200, schema: { example: [PAYMENT_EXAMPLE] } })
+  @ApiResponse({ status: 200, type: [PaymentResponseDto] })
   async findAll(@CurrentUser() user: AuthenticatedUser, @Param('orderId') orderId: string) {
     const payments = await this.paymentsService.listForOrder(user.userId, orderId);
     return payments.map(toPaymentResponse);

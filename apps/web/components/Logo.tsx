@@ -5,10 +5,10 @@ export function Logo({ className = '', iconOnly = false }: { className?: string;
         OS
       </span>
       {!iconOnly && (
-        <span className="text-sm leading-tight font-semibold text-zinc-900 dark:text-zinc-50">
-          Orders
+        <span className="text-sm leading-tight font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <span className="whitespace-nowrap">Orders &amp;</span>
           <br />
-          <span className="whitespace-nowrap">&amp; Settlements</span>
+          Settlements
         </span>
       )}
     </span>

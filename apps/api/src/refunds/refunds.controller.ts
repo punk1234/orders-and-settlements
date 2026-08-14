@@ -6,14 +6,7 @@ import { CurrentUser, AuthenticatedUser } from '../common/decorators/current-use
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { RefundsService } from './refunds.service';
 import { toRefundResponse } from './refund.mapper';
-
-const REFUND_EXAMPLE = {
-  id: '66c1f2a1e2b4a7f1d8c9a020',
-  amount: 100,
-  date: '2026-08-06T00:00:00.000Z',
-  note: 'Damaged item',
-  createdAt: '2026-08-06T10:00:00.000Z',
-};
+import { RefundResponseDto } from './dto/refund-response.dto';
 
 @ApiTags('refunds')
 @ApiCookieAuth('token')
@@ -33,7 +26,7 @@ export class RefundsController {
   @ApiBody({
     schema: { example: { amount: 100, date: '2026-08-20', note: 'Damaged item' } },
   })
-  @ApiResponse({ status: 201, schema: { example: REFUND_EXAMPLE } })
+  @ApiResponse({ status: 201, type: RefundResponseDto })
   @ApiResponse({
     status: 409,
     schema: {
@@ -53,7 +46,7 @@ export class RefundsController {
 
   @Get()
   @ApiOperation({ summary: 'Full refund history for one order (also embedded in GET /orders/:id).' })
-  @ApiResponse({ status: 200, schema: { example: [REFUND_EXAMPLE] } })
+  @ApiResponse({ status: 200, type: [RefundResponseDto] })
   async findAll(@CurrentUser() user: AuthenticatedUser, @Param('orderId') orderId: string) {
     const refunds = await this.refundsService.listForOrder(user.userId, orderId);
     return refunds.map(toRefundResponse);
