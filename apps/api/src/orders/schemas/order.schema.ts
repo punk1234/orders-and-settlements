@@ -19,7 +19,12 @@ export const LineItemSchema = SchemaFactory.createForClass(LineItem);
 
 @Schema({ timestamps: true })
 export class Order {
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  // No `index: true` here — the compound index below (`{ userId: 1, dueDate: 1 }`)
+  // already covers any query that filters on userId alone, since MongoDB can
+  // use a compound index's leading field(s) on their own. A separate
+  // single-field index on userId would be pure redundant write/storage
+  // overhead, never chosen by the query planner over the compound one.
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId!: Types.ObjectId;
 
   @Prop({ required: true, trim: true })

@@ -5,10 +5,13 @@ export type RefundDocument = HydratedDocument<Refund>;
 
 @Schema({ timestamps: { createdAt: true, updatedAt: false } })
 export class Refund {
-  @Prop({ type: Types.ObjectId, ref: 'Order', required: true, index: true })
+  // Same reasoning as payment.schema.ts: orderId is covered by the compound
+  // `{ orderId: 1, date: 1 }` index below, and refunds are never queried by
+  // userId directly (ownership goes through the Order document instead).
+  @Prop({ type: Types.ObjectId, ref: 'Order', required: true })
   orderId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId!: Types.ObjectId;
 
   @Prop({ required: true, min: 0.01 })

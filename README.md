@@ -1,12 +1,19 @@
 # Orders & Settlements
 
-A small full-stack app for creating orders with line items, recording full/partial payments against them, and viewing a dashboard with derived order status and amounts due. Built for CrossVal's take-home assessment.
+| | |
+|---|---|
+| **Task** | Orders and Settlements |
+| **Frontend (live)** | [orders-and-settlements-web.vercel.app](https://orders-and-settlements-web.vercel.app/) |
+| **Backend (live)** | [orders-and-settlements-api.vercel.app](https://orders-and-settlements-api.vercel.app/) |
+| **Backend API docs** | [orders-and-settlements-api.vercel.app/docs](https://orders-and-settlements-api.vercel.app/docs) |
+
+GitHub repo URL is submitted separately via the application form, not listed here.
+
+A small full-stack app for creating orders with line items, recording full/partial payments against them, and viewing a dashboard with derived order status and amounts due.
 
 The UI is a left-sidebar layout (Dashboard, New order, a light/dark theme toggle, and the signed-in user) kept deliberately plain — no component library, just Tailwind utility classes and a text-only "OS" wordmark, so nothing distracts from the data.
 
-**Live URL:** _to be filled in after deployment — see [Deployment](#deployment)._
-
-**Stack:** NestJS + TypeScript + MongoDB (backend), Next.js + TypeScript + Tailwind (frontend), Zod schemas shared between both. See [PLAN.md](./PLAN.md) for the full design rationale and batch-by-batch build log.
+**Stack:** NestJS + TypeScript + MongoDB (backend), Next.js + TypeScript + Tailwind (frontend), Zod schemas shared between both.
 
 ## Prerequisites
 
@@ -40,7 +47,7 @@ yarn test:api           # 78 tests: auth, orders, payments, refunds, audit log, 
 
 ## API overview
 
-Full interactive docs (with request/response examples) are served at **`/docs`** on the running API (Swagger UI via `@nestjs/swagger`). Summary:
+Full interactive docs are served at **`/docs`** on the running API (Swagger UI via `@nestjs/swagger`) — locally that's `http://localhost:4000/docs`. Every endpoint has a real response **schema** (backed by `@ApiProperty()`-decorated DTO classes, not just an inline example blob), so the Schema tab in Swagger UI reflects the actual shape of what comes back, not just a sample. You can also try requests directly from the UI: log in via `POST /auth/login` first (it sets the auth cookie the browser will then send), or click "Authorize" and paste a `Bearer` token. Below is a quick-reference summary; `/docs` is the source of truth for exact request/response shapes and error cases.
 
 | Method | Path | Notes |
 |---|---|---|
@@ -72,6 +79,18 @@ Every error response has the same shape:
 A couple of reliability details worth calling out explicitly:
 - **Required env vars are validated at boot** (`MONGO_URI`, `JWT_SECRET`) — the app refuses to start with a clear error rather than failing confusingly deep in the stack the first time something tries to use a missing value.
 - **The one third-party API call in the app** (Anthropic, for the assistant) retries transient failures (network errors, 429, 5xx) with backoff, and does not retry 4xx errors like a bad API key. Signup's check-then-insert also has a race (two identical emails arriving at once) closed by catching the database's own duplicate-key error, not just the initial existence check.
+
+## Data model
+
+Five collections: `User`, `Order` (embeds `lineItems`; `status` is never stored — see below), `Payment`, `Refund`, and `AuditLogEntry` — the latter three each reference their `Order` by `orderId` rather than embedding, so payment/refund/status history reads as its own append-only trail instead of growing an unbounded array on the order document.
+
+Indexes, all deliberate rather than default — every one of these is a compound index whose leading field also covers "filter by that field alone," so there's no separate single-field index sitting alongside it just adding write/storage overhead:
+- `User.email` — unique + indexed (enforces one account per email at the database level, not just in application code; also what makes the signup race-condition test meaningful).
+- `Order: { userId: 1, dueDate: 1 }` — covers both real query patterns: "this user's orders" and "this user's orders by due date" (dashboard, CSV export's date-range filter).
+- `Payment` / `Refund: { orderId: 1, date: 1 }` — covers "this order's payments/refunds in date order" (the order detail page's transaction history).
+- `AuditLogEntry: { orderId: 1, occurredAt: 1 }` — covers the audit log endpoint's chronological read.
+
+Ownership checks (`findOne({ _id, userId })`) don't need any of the above — `_id` is already unique, so that lookup goes straight through MongoDB's default `_id` index and the `userId` is just an equality check against the one document found, not a filter that benefits from indexing.
 
 ## Status derivation rules and edge cases
 

@@ -5,10 +5,15 @@ export type PaymentDocument = HydratedDocument<Payment>;
 
 @Schema({ timestamps: { createdAt: true, updatedAt: false } })
 export class Payment {
-  @Prop({ type: Types.ObjectId, ref: 'Order', required: true, index: true })
+  // No `index: true` on either field: orderId is covered by the compound
+  // `{ orderId: 1, date: 1 }` index below, and nothing in the app queries
+  // payments by userId directly — ownership is checked against the Order
+  // document (see order-ownership.ts), not by filtering this collection.
+  // userId is still stored on every payment for data lineage/auditability.
+  @Prop({ type: Types.ObjectId, ref: 'Order', required: true })
   orderId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId!: Types.ObjectId;
 
   @Prop({ required: true, min: 0.01 })

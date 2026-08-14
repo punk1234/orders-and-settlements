@@ -6,10 +6,13 @@ export type AuditLogEntryDocument = HydratedDocument<AuditLogEntry>;
 
 @Schema({ collection: 'auditlogs', timestamps: { createdAt: true, updatedAt: false } })
 export class AuditLogEntry {
-  @Prop({ type: Types.ObjectId, ref: 'Order', required: true, index: true })
+  // Same reasoning as payment.schema.ts: orderId is covered by the compound
+  // `{ orderId: 1, occurredAt: 1 }` index below, and entries are never
+  // queried by userId directly.
+  @Prop({ type: Types.ObjectId, ref: 'Order', required: true })
   orderId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'User', required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   userId!: Types.ObjectId;
 
   // null only for the very first entry on an order (there is no "from").
