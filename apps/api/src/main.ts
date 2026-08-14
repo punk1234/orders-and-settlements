@@ -37,4 +37,13 @@ async function bootstrap() {
   console.log(`API listening on port ${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  // Without this catch, a bootstrap failure (e.g. env validation, a bad
+  // MONGO_URI) is an unhandled promise rejection — Node crashes the process
+  // with no useful message in Vercel's Function Logs, and visitors just see
+  // a generic "This Serverless Function has crashed." Logging the real
+  // error here at least makes that diagnosable from the logs.
+  // eslint-disable-next-line no-console
+  console.error('Fatal error during bootstrap:', err);
+  process.exit(1);
+});
